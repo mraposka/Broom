@@ -19,15 +19,12 @@ namespace ClearMyPc
         {
             InitializeComponent();
         }
-        private void backgroundWorker1_DoWork(object sender, System.ComponentModel.DoWorkEventArgs e)
-        {
-
-        }
+        string[] extensions = { ".jpg", ".png", ".txt" };
         private void backgroundWorker2_DoWork(object sender, System.ComponentModel.DoWorkEventArgs e)
         {
             label1.Text = "Taranan Dosya Sayısı:" + listBox1.Items.Count.ToString();
-        } 
-        private async void button1_Click(object sender, EventArgs e)
+        }
+        private void button1_Click(object sender, EventArgs e)
         {
             MessageBox.Show("Started!");
             //ScanFiles("C:\\Users\\kadir\\Desktop\\A");
@@ -36,30 +33,23 @@ namespace ClearMyPc
         private void button2_Click(object sender, EventArgs e)
         {
             FindDuplicates();
-
         }
         private void ScanFiles(string directoryPath)
         {
             listBox1.Items.Clear();
-
             BackgroundWorker worker = new BackgroundWorker();
             worker.WorkerReportsProgress = true;
             worker.DoWork += Worker_DoWork;
             worker.ProgressChanged += Worker_ProgressChanged;
             worker.RunWorkerCompleted += Worker_RunWorkerCompleted;
-
             worker.RunWorkerAsync(directoryPath);
         }
 
         private void Worker_DoWork(object sender, DoWorkEventArgs e)
         {
             string directoryPath = e.Argument.ToString();
-            string[] extensions = { ".jpg", ".png", ".txt" };
-
             HashSet<string> filePaths = new HashSet<string>();
-
             ScanDirectoryWithKernel32(directoryPath, filePaths, extensions, (BackgroundWorker)sender, e);
-
             e.Result = filePaths.ToList();
         }
 
@@ -67,62 +57,45 @@ namespace ClearMyPc
         {
             List<string> files = (List<string>)e.UserState;
             listBox1.Items.AddRange(files.ToArray());
-
             UpdateItemCountLabel();
         }
 
         private void Worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             if (e.Error != null)
-            {
                 MessageBox.Show("Error scanning directory: " + e.Error.Message);
-            }
             else if (e.Cancelled)
-            {
                 MessageBox.Show("Scanning canceled.");
-            }
             else
-            {
                 MessageBox.Show("Scanning completed successfully.");
-            }
         }
 
         private void UpdateItemCountLabel()
         {
             if (InvokeRequired)
-            {
                 Invoke(new Action(UpdateItemCountLabel));
-            }
             else
-            {
                 label1.Text = listBox1.Items.Count.ToString();
-            }
         }
 
         private void ScanDirectoryWithKernel32(string directoryPath, HashSet<string> filePaths, string[] extensions, BackgroundWorker worker, DoWorkEventArgs e)
         {
             WIN32_FIND_DATA findData;
             IntPtr findHandle = FindFirstFile(Path.Combine(directoryPath, "*.*"), out findData);
-
             if (findHandle != INVALID_HANDLE_VALUE)
             {
                 List<string> filesToAdd = new List<string>();
-                int batchCount = 1000; // Number of files to add in a batch
-
+                int batchCount = 1000;
                 do
                 {
                     if (findData.cFileName != "." && findData.cFileName != "..")
                     {
                         string fullPath = Path.Combine(directoryPath, findData.cFileName);
-
                         if ((findData.dwFileAttributes & FileAttributes.Directory) == FileAttributes.Directory)
-                        {
                             ScanDirectoryWithKernel32(fullPath, filePaths, extensions, worker, e);
-                        }
                         else
                         {
                             string extension = Path.GetExtension(findData.cFileName);
-
                             if (extensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
                             {
                                 if (filePaths.Add(fullPath))
@@ -132,13 +105,11 @@ namespace ClearMyPc
                             }
                         }
                     }
-
                     if (filesToAdd.Count >= batchCount)
                     {
                         worker.ReportProgress(0, filesToAdd);
                         filesToAdd.Clear();
                     }
-
                     if (worker.CancellationPending)
                     {
                         e.Cancel = true;
@@ -146,28 +117,19 @@ namespace ClearMyPc
                     }
                 }
                 while (FindNextFile(findHandle, out findData));
-
                 FindClose(findHandle);
-
                 if (filesToAdd.Count > 0)
-                {
                     worker.ReportProgress(0, filesToAdd);
-                }
             }
         }
 
         #region Kernel32.dll Import
-
         private const int MAX_PATH = 260;
         private static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
-
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
         private struct WIN32_FIND_DATA
         {
-            public FileAttributes dwFileAttributes;
-            public FILETIME ftCreationTime;
-            public FILETIME ftLastAccessTime;
-            public FILETIME ftLastWriteTime;
+            public FileAttributes dwFileAttributes; 
             public int nFileSizeHigh;
             public int nFileSizeLow;
             public int dwReserved0;
@@ -186,19 +148,16 @@ namespace ClearMyPc
 
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool FindClose(IntPtr hFindFile);
-
         #endregion
         private async void FindDuplicates()
         {
             listBox2.Items.Clear();
             List<string> duplicateFiles = new List<string>();
-
             await Task.Run(() =>
             {
                 var fileGroups = listBox1.Items.Cast<string>()
                     .GroupBy(file => new { Name = Path.GetFileName(file), Size = new FileInfo(file).Length })
                     .Where(g => g.Count() > 1);
-
                 foreach (var group in fileGroups)
                 {
                     foreach (string file in group)
@@ -208,7 +167,6 @@ namespace ClearMyPc
                     }
                 }
             });
-
             //await DeleteDuplicates(duplicateFiles);
         }
 
@@ -217,33 +175,21 @@ namespace ClearMyPc
             await Task.Run(() =>
             {
                 HashSet<string> originalFiles = new HashSet<string>();
-
                 foreach (string file in duplicateFiles)
                 {
                     string fileName = Path.GetFileName(file);
-
                     if (!originalFiles.Contains(fileName))
-                    {
                         originalFiles.Add(fileName);
-                    }
                 }
-
                 List<string> filesToDelete = new List<string>();
-
                 foreach (string file in duplicateFiles)
                 {
                     string fileName = Path.GetFileName(file);
-
                     if (originalFiles.Contains(fileName))
-                    {
                         originalFiles.Remove(fileName);
-                    }
                     else
-                    {
                         filesToDelete.Add(file);
-                    }
                 }
-
                 foreach (string fileToDelete in filesToDelete)
                 {
                     try
@@ -260,11 +206,9 @@ namespace ClearMyPc
                 Invoke(new Action(() =>
                 {
                     foreach (string file in filesToDelete)
-                    {
                         listBox2.Items.Remove(file);
-                    }
                 }));
             });
-        } 
+        }
     }
 }
