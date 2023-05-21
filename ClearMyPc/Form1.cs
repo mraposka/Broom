@@ -20,19 +20,20 @@ namespace ClearMyPc
             InitializeComponent();
         }
         string[] extensions = { ".jpg", ".png", ".txt" };
+        List<string> duplicateFiles;
         private void backgroundWorker2_DoWork(object sender, System.ComponentModel.DoWorkEventArgs e)
         {
             label1.Text = "Taranan Dosya Sayısı:" + listBox1.Items.Count.ToString();
         }
         private void button1_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Started!");
+            label1.Text = "Scanning!";
             //ScanFiles("C:\\Users\\kadir\\Desktop\\A");
             ScanFiles("D:\\X");
         }
-        private void button2_Click(object sender, EventArgs e)
+        private async void button2_Click(object sender, EventArgs e)
         {
-            FindDuplicates();
+            await DeleteDuplicates(duplicateFiles);
         }
         private void ScanFiles(string directoryPath)
         {
@@ -67,7 +68,7 @@ namespace ClearMyPc
             else if (e.Cancelled)
                 MessageBox.Show("Scanning canceled.");
             else
-                MessageBox.Show("Scanning completed successfully.");
+            { MessageBox.Show("Scanning completed successfully."); FindDuplicates();}
         }
 
         private void UpdateItemCountLabel()
@@ -75,7 +76,7 @@ namespace ClearMyPc
             if (InvokeRequired)
                 Invoke(new Action(UpdateItemCountLabel));
             else
-                label1.Text = listBox1.Items.Count.ToString();
+                label1.Text = "Scanned File: " + listBox1.Items.Count.ToString();
         }
 
         private void ScanDirectoryWithKernel32(string directoryPath, HashSet<string> filePaths, string[] extensions, BackgroundWorker worker, DoWorkEventArgs e)
@@ -129,7 +130,10 @@ namespace ClearMyPc
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
         private struct WIN32_FIND_DATA
         {
-            public FileAttributes dwFileAttributes; 
+            public FileAttributes dwFileAttributes;
+            public FILETIME ftCreationTime;
+            public FILETIME ftLastAccessTime;
+            public FILETIME ftLastWriteTime;
             public int nFileSizeHigh;
             public int nFileSizeLow;
             public int dwReserved0;
@@ -152,7 +156,7 @@ namespace ClearMyPc
         private async void FindDuplicates()
         {
             listBox2.Items.Clear();
-            List<string> duplicateFiles = new List<string>();
+            List<string> _duplicateFiles = new List<string>();
             await Task.Run(() =>
             {
                 var fileGroups = listBox1.Items.Cast<string>()
@@ -162,53 +166,58 @@ namespace ClearMyPc
                 {
                     foreach (string file in group)
                     {
-                        duplicateFiles.Add(file);
+                        _duplicateFiles.Add(file);
                         Invoke(new Action(() => listBox2.Items.Add(file)));
                     }
                 }
             });
-            //await DeleteDuplicates(duplicateFiles);
+            label1.Text = "Found " + (listBox2.Items.Count/2).ToString() + " duplicates";
+            duplicateFiles = _duplicateFiles;
         }
 
         private async Task DeleteDuplicates(List<string> duplicateFiles)
         {
             await Task.Run(() =>
             {
-                HashSet<string> originalFiles = new HashSet<string>();
-                foreach (string file in duplicateFiles)
+                if (DialogResult.Yes == MessageBox.Show((listBox2.Items.Count/2).ToString() + " file will be deleted. Are you sure?", "ClearMyPc", MessageBoxButtons.YesNo))
                 {
-                    string fileName = Path.GetFileName(file);
-                    if (!originalFiles.Contains(fileName))
-                        originalFiles.Add(fileName);
-                }
-                List<string> filesToDelete = new List<string>();
-                foreach (string file in duplicateFiles)
-                {
-                    string fileName = Path.GetFileName(file);
-                    if (originalFiles.Contains(fileName))
-                        originalFiles.Remove(fileName);
-                    else
-                        filesToDelete.Add(file);
-                }
-                foreach (string fileToDelete in filesToDelete)
-                {
-                    try
+                    label1.Text = "Deleting";
+                    HashSet<string> originalFiles = new HashSet<string>();
+                    foreach (string file in duplicateFiles)
                     {
-                        System.IO.File.Delete(fileToDelete);
+                        string fileName = Path.GetFileName(file);
+                        if (!originalFiles.Contains(fileName))
+                            originalFiles.Add(fileName);
                     }
-                    catch (Exception ex)
+                    List<string> filesToDelete = new List<string>();
+                    foreach (string file in duplicateFiles)
                     {
-                        // Handle any exceptions that might occur during file deletion
-                        MessageBox.Show("Error deleting file: " + ex.Message);
+                        string fileName = Path.GetFileName(file);
+                        if (originalFiles.Contains(fileName))
+                            originalFiles.Remove(fileName);
+                        else
+                            filesToDelete.Add(file);
                     }
-                }
+                    foreach (string fileToDelete in filesToDelete)
+                    {
+                        try
+                        {
+                            System.IO.File.Delete(fileToDelete);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Handle any exceptions that might occur during file deletion
+                            MessageBox.Show("Error deleting file: " + ex.Message);
+                        }
+                    }
 
-                Invoke(new Action(() =>
-                {
-                    foreach (string file in filesToDelete)
-                        listBox2.Items.Remove(file);
-                }));
+                    Invoke(new Action(() =>
+                    {
+                        foreach (string file in filesToDelete)
+                            listBox2.Items.Remove(file);
+                    }));
+                }
             });
-        }
+        } 
     }
 }
