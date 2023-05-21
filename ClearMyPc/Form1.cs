@@ -6,38 +6,36 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using static System.Net.WebRequestMethods;
-using static System.Windows.Forms.AxHost;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace ClearMyPc
 {
-
     public partial class Form1 : Form
     {
         public Form1()
         {
             InitializeComponent();
         }
-        string[] extensions = { ".jpg", ".png", ".txt" };
-        List<string> duplicateFiles;
-        private void backgroundWorker2_DoWork(object sender, System.ComponentModel.DoWorkEventArgs e)
-        {
-            label1.Text = "Taranan Dosya Sayısı:" + listBox1.Items.Count.ToString();
-        }
+
+        string[] extensions = { ".jpg", ".png", ".txt",".jpeg",".mp4",".xls",".doc",".ppt",".docx",".pptx",".xlsx",
+            ".pdf",".exe",".zip",".rar", ".dll", };
+        List<string> fileList = new List<string>();
+        List<string> duplicateFiles = new List<string>();
+
         private void button1_Click(object sender, EventArgs e)
         {
             label1.Text = "Scanning!";
-            //ScanFiles("C:\\Users\\kadir\\Desktop\\A");
             ScanFiles("D:\\X");
         }
+
         private async void button2_Click(object sender, EventArgs e)
         {
             await DeleteDuplicates(duplicateFiles);
         }
+
         private void ScanFiles(string directoryPath)
         {
-            listBox1.Items.Clear();
+            fileList.Clear();
+
             BackgroundWorker worker = new BackgroundWorker();
             worker.WorkerReportsProgress = true;
             worker.DoWork += Worker_DoWork;
@@ -57,7 +55,7 @@ namespace ClearMyPc
         private void Worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             List<string> files = (List<string>)e.UserState;
-            listBox1.Items.AddRange(files.ToArray());
+            fileList.AddRange(files);
             UpdateItemCountLabel();
         }
 
@@ -68,7 +66,10 @@ namespace ClearMyPc
             else if (e.Cancelled)
                 MessageBox.Show("Scanning canceled.");
             else
-            { MessageBox.Show("Scanning completed successfully."); FindDuplicates();}
+            {
+                MessageBox.Show("Scanning completed successfully.");
+                FindDuplicates();
+            }
         }
 
         private void UpdateItemCountLabel()
@@ -76,7 +77,7 @@ namespace ClearMyPc
             if (InvokeRequired)
                 Invoke(new Action(UpdateItemCountLabel));
             else
-                label1.Text = "Scanned File: " + listBox1.Items.Count.ToString();
+                label1.Text = "Scanned File: " + fileList.Count.ToString();
         }
 
         private void ScanDirectoryWithKernel32(string directoryPath, HashSet<string> filePaths, string[] extensions, BackgroundWorker worker, DoWorkEventArgs e)
@@ -85,7 +86,6 @@ namespace ClearMyPc
             IntPtr findHandle = FindFirstFile(Path.Combine(directoryPath, "*.*"), out findData);
             if (findHandle != INVALID_HANDLE_VALUE)
             {
-                List<string> filesToAdd = new List<string>();
                 int batchCount = 1000;
                 do
                 {
@@ -101,32 +101,28 @@ namespace ClearMyPc
                             {
                                 if (filePaths.Add(fullPath))
                                 {
-                                    filesToAdd.Add(fullPath);
+                                    List<string> filesToAdd = new List<string> { fullPath }; // Create a new list with a single element
+                                    worker.ReportProgress(0, filesToAdd);
                                 }
                             }
                         }
                     }
-                    if (filesToAdd.Count >= batchCount)
-                    {
-                        worker.ReportProgress(0, filesToAdd);
-                        filesToAdd.Clear();
-                    }
+
                     if (worker.CancellationPending)
                     {
                         e.Cancel = true;
                         break;
                     }
-                }
-                while (FindNextFile(findHandle, out findData));
+                } while (FindNextFile(findHandle, out findData));
+
                 FindClose(findHandle);
-                if (filesToAdd.Count > 0)
-                    worker.ReportProgress(0, filesToAdd);
             }
         }
 
         #region Kernel32.dll Import
         private const int MAX_PATH = 260;
         private static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
+
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
         private struct WIN32_FIND_DATA
         {
@@ -153,35 +149,37 @@ namespace ClearMyPc
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool FindClose(IntPtr hFindFile);
         #endregion
+
         private async void FindDuplicates()
         {
-            listBox2.Items.Clear();
-            List<string> _duplicateFiles = new List<string>();
+            duplicateFiles.Clear();
+
             await Task.Run(() =>
             {
-                var fileGroups = listBox1.Items.Cast<string>()
+                var fileGroups = fileList
                     .GroupBy(file => new { Name = Path.GetFileName(file), Size = new FileInfo(file).Length })
                     .Where(g => g.Count() > 1);
+
                 foreach (var group in fileGroups)
                 {
                     foreach (string file in group)
                     {
-                        _duplicateFiles.Add(file);
-                        Invoke(new Action(() => listBox2.Items.Add(file)));
+                        duplicateFiles.Add(file);
                     }
                 }
             });
-            label1.Text = "Found " + (listBox2.Items.Count/2).ToString() + " duplicates";
-            duplicateFiles = _duplicateFiles;
+
+            label1.Text = "Found " + (duplicateFiles.Count / 2).ToString() + " duplicates";
         }
 
         private async Task DeleteDuplicates(List<string> duplicateFiles)
         {
             await Task.Run(() =>
             {
-                if (DialogResult.Yes == MessageBox.Show((listBox2.Items.Count/2).ToString() + " file will be deleted. Are you sure?", "ClearMyPc", MessageBoxButtons.YesNo))
+                if (DialogResult.Yes == MessageBox.Show((duplicateFiles.Count / 2).ToString() + " file will be deleted. Are you sure?", "ClearMyPc", MessageBoxButtons.YesNo))
                 {
                     label1.Text = "Deleting";
+
                     HashSet<string> originalFiles = new HashSet<string>();
                     foreach (string file in duplicateFiles)
                     {
@@ -189,6 +187,7 @@ namespace ClearMyPc
                         if (!originalFiles.Contains(fileName))
                             originalFiles.Add(fileName);
                     }
+
                     List<string> filesToDelete = new List<string>();
                     foreach (string file in duplicateFiles)
                     {
@@ -198,6 +197,7 @@ namespace ClearMyPc
                         else
                             filesToDelete.Add(file);
                     }
+
                     foreach (string fileToDelete in filesToDelete)
                     {
                         try
@@ -214,10 +214,10 @@ namespace ClearMyPc
                     Invoke(new Action(() =>
                     {
                         foreach (string file in filesToDelete)
-                            listBox2.Items.Remove(file);
+                            duplicateFiles.Remove(file);
                     }));
                 }
             });
-        } 
+        }
     }
 }
