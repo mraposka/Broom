@@ -77,6 +77,7 @@ namespace ClearMyPc
                 ScanPage.Singleton.extensions = extensions;
                 ScanPage.Singleton.path= textBox1.Text;
                 MessageBox.Show("Settings Saved!");
+                this.Close();
             } 
         }
 
@@ -91,10 +92,11 @@ namespace ClearMyPc
                     textBox1.Text = fbd.SelectedPath;
                 }
             }
-        }
+        } 
 
-        private void button1_Click(object sender, EventArgs e)
-        { 
+        private void SettingsPage_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            Application.OpenForms[0].TopMost = true; 
         }
     }
 }
