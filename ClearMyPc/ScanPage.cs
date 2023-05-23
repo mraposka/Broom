@@ -9,25 +9,32 @@ using System.Windows.Forms;
 
 namespace ClearMyPc
 {
-    public partial class Form1 : Form
+    public partial class ScanPage : Form
     {
-        public Form1()
+        public static class Singleton
+        {
+            public static string extensions { get; set; }
+            public static string path { get; set; }
+        }
+        public ScanPage()
         {
             InitializeComponent();
         }
 
-        string[] extensions = { ".jpg", ".png", ".txt",".jpeg",".mp4",".xls",".doc",".ppt",".docx",".pptx",".xlsx",
-            ".pdf",".exe",".zip",".rar", ".dll", };
+        string[] extensions;
         List<string> fileList = new List<string>();
         List<string> duplicateFiles = new List<string>();
 
-        private void button1_Click(object sender, EventArgs e)
+        private void scanButton_Click(object sender, EventArgs e)
         {
+
+            MessageBox.Show(Singleton.path.ToString());
+            extensions = Singleton.extensions.Split(',');
             label1.Text = "Scanning!";
-            ScanFiles("D:\\X");
+            ScanFiles(Singleton.path);
         }
 
-        private async void button2_Click(object sender, EventArgs e)
+        private async void delButton_Click(object sender, EventArgs e)
         {
             await DeleteDuplicates(duplicateFiles);
         }
@@ -68,6 +75,7 @@ namespace ClearMyPc
             else
             {
                 MessageBox.Show("Scanning completed successfully.");
+                label1.Text = "Finding Duplicates";
                 FindDuplicates();
             }
         }
@@ -170,6 +178,7 @@ namespace ClearMyPc
             });
 
             label1.Text = "Found " + (duplicateFiles.Count / 2).ToString() + " duplicates";
+            delButton.Enabled = true;
         }
 
         private async Task DeleteDuplicates(List<string> duplicateFiles)
@@ -216,8 +225,21 @@ namespace ClearMyPc
                         foreach (string file in filesToDelete)
                             duplicateFiles.Remove(file);
                     }));
+
+                    label1.Text = "Deleting Completed";
                 }
             });
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            delButton.Enabled = false;
+        }
+
+        private void settingsButton_Click(object sender, EventArgs e)
+        {
+            SettingsPage settingsPage = new SettingsPage();
+            settingsPage.Show();
         }
     }
 }
