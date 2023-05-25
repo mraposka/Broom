@@ -37,12 +37,13 @@
             // 
             // scanButton
             // 
+            this.scanButton.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("scanButton.BackgroundImage")));
+            this.scanButton.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
             this.scanButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(162)));
-            this.scanButton.Location = new System.Drawing.Point(12, 49);
+            this.scanButton.Location = new System.Drawing.Point(68, 50);
             this.scanButton.Name = "scanButton";
-            this.scanButton.Size = new System.Drawing.Size(99, 34);
+            this.scanButton.Size = new System.Drawing.Size(68, 54);
             this.scanButton.TabIndex = 1;
-            this.scanButton.Text = "Scan";
             this.scanButton.UseVisualStyleBackColor = true;
             this.scanButton.Click += new System.EventHandler(this.scanButton_Click);
             // 
@@ -58,10 +59,12 @@
             // 
             // delButton
             // 
+            this.delButton.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("delButton.BackgroundImage")));
+            this.delButton.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
             this.delButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(162)));
-            this.delButton.Location = new System.Drawing.Point(117, 49);
+            this.delButton.Location = new System.Drawing.Point(142, 49);
             this.delButton.Name = "delButton";
-            this.delButton.Size = new System.Drawing.Size(99, 34);
+            this.delButton.Size = new System.Drawing.Size(68, 54);
             this.delButton.TabIndex = 4;
             this.delButton.Text = "Delete";
             this.delButton.UseVisualStyleBackColor = true;
@@ -69,12 +72,13 @@
             // 
             // settingsButton
             // 
+            this.settingsButton.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("settingsButton.BackgroundImage")));
+            this.settingsButton.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
             this.settingsButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(162)));
-            this.settingsButton.Location = new System.Drawing.Point(222, 49);
+            this.settingsButton.Location = new System.Drawing.Point(216, 49);
             this.settingsButton.Name = "settingsButton";
-            this.settingsButton.Size = new System.Drawing.Size(39, 34);
+            this.settingsButton.Size = new System.Drawing.Size(68, 54);
             this.settingsButton.TabIndex = 5;
-            this.settingsButton.Text = "S";
             this.settingsButton.UseVisualStyleBackColor = true;
             this.settingsButton.Click += new System.EventHandler(this.settingsButton_Click);
             // 
@@ -82,7 +86,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(270, 89);
+            this.ClientSize = new System.Drawing.Size(296, 116);
             this.Controls.Add(this.settingsButton);
             this.Controls.Add(this.delButton);
             this.Controls.Add(this.label1);
