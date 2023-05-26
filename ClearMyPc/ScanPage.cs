@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -18,7 +20,7 @@ namespace ClearMyPc
         }
         public ScanPage()
         {
-            InitializeComponent(); 
+            InitializeComponent();
         }
 
         string[] extensions;
@@ -26,20 +28,31 @@ namespace ClearMyPc
         List<string> duplicateFiles = new List<string>();
 
         private void scanButton_Click(object sender, EventArgs e)
-        {  
-            extensions = Singleton.extensions.Split(',');
-            label1.Text = "Scanning!";
-            ScanFiles(Singleton.path);
+        {
+            if (!string.IsNullOrEmpty(Singleton.extensions))
+            {
+                extensions = Singleton.extensions.Split(',');
+                label1.Text = "Scanning!";
+                scanButton.Enabled = false;
+                delButton.Enabled = false;
+                settingsButton.Enabled = false;
+                ScanFiles(Singleton.path);
+            }
+            else
+            {
+                MessageBox.Show("Select file path to scan on settings page!");
+            }
+
         }
 
         private async void delButton_Click(object sender, EventArgs e)
         {
-            await DeleteDuplicates(duplicateFiles); 
+            await DeleteDuplicates(duplicateFiles);
         }
 
         private void ScanFiles(string directoryPath)
         {
-            fileList.Clear(); 
+            fileList.Clear();
             BackgroundWorker worker = new BackgroundWorker();
             worker.WorkerReportsProgress = true;
             worker.DoWork += Worker_DoWork;
@@ -66,13 +79,16 @@ namespace ClearMyPc
         private void Worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             if (e.Error != null)
-                MessageBox.Show(new Form { TopMost = true }, "Error scanning directory: " + e.Error.Message); 
+                MessageBox.Show(new Form { TopMost = true }, "Error scanning directory: " + e.Error.Message);
             else if (e.Cancelled)
                 MessageBox.Show(new Form { TopMost = true }, "Scanning canceled.");
             else
-            { 
+            {
                 System.Media.SystemSounds.Exclamation.Play();
                 MessageBox.Show(new Form { TopMost = true }, "Scanning completed successfully.");
+                scanButton.Enabled = true;
+                delButton.Enabled = true;
+                settingsButton.Enabled = true;
                 label1.Text = "Finding Duplicates";
                 FindDuplicates();
             }
@@ -112,16 +128,16 @@ namespace ClearMyPc
                                 }
                             }
                         }
-                    } 
+                    }
                     if (worker.CancellationPending)
                     {
                         e.Cancel = true;
                         break;
                     }
-                } while (FindNextFile(findHandle, out findData)); 
+                } while (FindNextFile(findHandle, out findData));
                 FindClose(findHandle);
             }
-        } 
+        }
         #region Kernel32.dll Import
         private const int MAX_PATH = 260;
         private static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
@@ -141,7 +157,7 @@ namespace ClearMyPc
             public string cFileName;
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 14)]
             public string cAlternateFileName;
-        } 
+        }
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr FindFirstFile(string lpFileName, out WIN32_FIND_DATA lpFindFileData);
 
@@ -154,12 +170,13 @@ namespace ClearMyPc
 
         private async void FindDuplicates()
         {
-            duplicateFiles.Clear(); 
+            string saveDuplicatesToDesktopPath = "C:\\Users\\kadir\\Desktop\\ASD.txt";
+            duplicateFiles.Clear();
             await Task.Run(() =>
             {
                 var fileGroups = fileList
                     .GroupBy(file => new { Name = Path.GetFileName(file), Size = new FileInfo(file).Length })
-                    .Where(g => g.Count() > 1); 
+                    .Where(g => g.Count() > 1);
                 foreach (var group in fileGroups)
                 {
                     foreach (string file in group)
@@ -167,8 +184,9 @@ namespace ClearMyPc
                         duplicateFiles.Add(file);
                     }
                 }
-            }); 
+            });
             label1.Text = "Found " + (duplicateFiles.Count / 2).ToString() + " duplicates";
+            await WriteListToFileAsync(duplicateFiles, saveDuplicatesToDesktopPath);
             delButton.Enabled = true;
         }
 
@@ -186,7 +204,7 @@ namespace ClearMyPc
                         string fileName = Path.GetFileName(file);
                         if (!originalFiles.Contains(fileName))
                             originalFiles.Add(fileName);
-                    } 
+                    }
                     List<string> filesToDelete = new List<string>();
                     foreach (string file in duplicateFiles)
                     {
@@ -195,7 +213,7 @@ namespace ClearMyPc
                             originalFiles.Remove(fileName);
                         else
                             filesToDelete.Add(file);
-                    } 
+                    }
                     foreach (string fileToDelete in filesToDelete)
                     {
                         try
@@ -207,12 +225,12 @@ namespace ClearMyPc
                             // Handle any exceptions that might occur during file deletion
                             MessageBox.Show(new Form { TopMost = true }, "Error deleting file: " + ex.Message);
                         }
-                    } 
+                    }
                     Invoke(new Action(() =>
                     {
                         foreach (string file in filesToDelete)
                             duplicateFiles.Remove(file);
-                    })); 
+                    }));
                     label1.Text = "Deleting Completed";
                 }
             });
@@ -220,13 +238,53 @@ namespace ClearMyPc
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            delButton.Enabled = false;
+            delButton.Enabled = false;  
         }
 
         private void settingsButton_Click(object sender, EventArgs e)
         {
             SettingsPage settingsPage = new SettingsPage();
             settingsPage.Show();
+        }
+
+        private void minimizeButton_Click(object sender, EventArgs e)
+        {
+            foreach (Form item in Application.OpenForms)
+            {
+                item.TopMost = false;
+            }
+            this.WindowState = FormWindowState.Minimized; 
+        } 
+        private void ScanPage_SizeChanged(object sender, EventArgs e)
+        {
+            if (this.WindowState != FormWindowState.Minimized)
+            {
+                this.TopMost = true;
+            }
+        }
+        public async Task WriteListToFileAsync(List<string> lines, string filePath)
+        {
+            Thread.Sleep(1000);
+            label1.Text = "Writing file paths"; 
+            checkBox1.BackColor = Color.Yellow;
+            const int bufferSize = 8192; // Set the buffer size (e.g., 8KB)
+
+            using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, FileOptions.Asynchronous))
+            using (var streamWriter = new StreamWriter(fileStream))
+            {
+                foreach (string line in lines)
+                {
+                    await streamWriter.WriteLineAsync(line);
+                }
+            }
+            checkBox1.BackColor = Color.Lime;
+            label1.Text = "Click delete to delete " + (duplicateFiles.Count / 2).ToString() + " duplicates";
+        }
+
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+           if(checkBox1.Checked) checkBox1.BackColor = Color.Red;
+           else checkBox1.BackColor = SystemColors.Control;
         }
     }
 }
