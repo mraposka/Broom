@@ -10,3 +10,6 @@
 
 ## Usage
 #### After scanning with the Scan button, you can delete the repeating areas with the Delete button.
+
+First test on my hard drive
+![Before-After](https://github.com/mraposka/Broom/assets/41973392/9dcec4bf-dc8f-4603-9cbe-22f63578dd59)
